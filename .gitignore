@@ -18,3 +18,4 @@ wheels/
 
 # audio files
 *.mp3
+.DS_Store

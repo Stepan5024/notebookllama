@@ -1,3 +1,5 @@
+import logging
+
 from utils import get_mind_map, process_file, query_index
 from fastmcp import FastMCP
 from typing import List, Union, Literal
@@ -20,14 +22,16 @@ async def process_file_tool(
     return notebook_model + "\n%separator%\n" + text
 
 
-@mcp.tool(name="get_mind_map_tool", description="This tool is useful to get a mind ")
-async def get_mind_map_tool(
-    summary: str, highlights: List[str]
-) -> Union[str, Literal["Sorry, mind map creation failed."]]:
-    mind_map_fl = await get_mind_map(summary=summary, highlights=highlights)
-    if mind_map_fl is None:
+@mcp.tool(name="get_mind_map_tool")
+async def get_mind_map_tool(summary: str, highlights: List[str]) -> Union[str, Literal["Sorry, mind map creation failed."]]:
+    try:
+        mind_map_fl = await get_mind_map(summary=summary, highlights=highlights)
+        if mind_map_fl is None:
+            return "Sorry, mind map creation failed."
+        return mind_map_fl
+    except Exception as e:
+        logging.error(f"Mind map creation failed: {str(e)}")
         return "Sorry, mind map creation failed."
-    return mind_map_fl
 
 
 @mcp.tool(name="query_index_tool", description="Query a LlamaCloud index.")

@@ -16,6 +16,8 @@ from llama_index.observability.otel import LlamaIndexOpenTelemetry
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import (
     OTLPSpanExporter,
 )
+from fastmcp.server.http import StreamableHTTPSessionManager
+
 
 load_dotenv()
 
@@ -46,23 +48,28 @@ def read_html_file(file_path: str) -> str:
 async def run_workflow(file: io.BytesIO) -> Tuple[str, str, str, str, str]:
     fl = temp.NamedTemporaryFile(suffix=".pdf", delete=False, delete_on_close=False)
     content = file.getvalue()
-    with open(fl.name, "wb") as f:
-        f.write(content)
-    st_time = int(time.time() * 1000000)
-    ev = FileInputEvent(file=fl.name)
-    result: NotebookOutputEvent = await WF.run(start_event=ev)
-    q_and_a = ""
-    for q, a in zip(result.questions, result.answers):
-        q_and_a += f"**{q}**\n\n{a}\n\n"
-    bullet_points = "## Bullet Points\n\n- " + "\n- ".join(result.highlights)
-    os.remove(fl.name)
-    mind_map = result.mind_map
-    if Path(mind_map).is_file():
-        mind_map = read_html_file(mind_map)
-        os.remove(result.mind_map)
-    end_time = int(time.time() * 1000000)
-    sql_engine.to_sql_database(start_time=st_time, end_time=end_time)
-    return result.md_content, result.summary, q_and_a, bullet_points, mind_map
+    try:
+        with open(fl.name, "wb") as f:
+            f.write(content)
+        st_time = int(time.time() * 1000000)
+        ev = FileInputEvent(file=fl.name)
+        result: NotebookOutputEvent = await WF.run(start_event=ev)
+        q_and_a = ""
+        for q, a in zip(result.questions, result.answers):
+            q_and_a += f"**{q}**\n\n{a}\n\n"
+        bullet_points = "## Bullet Points\n\n- " + "\n- ".join(result.highlights)
+        os.remove(fl.name)
+        mind_map = result.mind_map
+        if Path(mind_map).is_file():
+            mind_map = read_html_file(mind_map)
+            os.remove(result.mind_map)
+        end_time = int(time.time() * 1000000)
+        sql_engine.to_sql_database(start_time=st_time, end_time=end_time)
+        return result.md_content, result.summary, q_and_a, bullet_points, mind_map
+
+    finally:
+        if os.path.exists(fl.name):
+            os.remove(fl.name)
 
 
 def sync_run_workflow(file: io.BytesIO):

@@ -42,29 +42,62 @@ class NotebookLMWorkflow(Workflow):
         mcp_client: Annotated[BasicMCPClient, Resource(get_mcp_client)],
         ctx: Context,
     ) -> Union[MindMapCreationEvent, NotebookOutputEvent]:
-        ctx.write_event_to_stream(
-            ev=ev,
-        )
-        result = await mcp_client.call_tool(
-            tool_name="process_file_tool", arguments={"filename": ev.file}
-        )
-        split_result = result.content[0].text.split("\n%separator%\n")
-        json_data = split_result[0]
-        md_text = split_result[1]
-        if json_data == "Sorry, your file could not be processed.":
+        try:
+            ctx.write_event_to_stream(
+                ev=ev,
+            )
+            result = await mcp_client.call_tool(
+                tool_name="process_file_tool", arguments={"filename": ev.file}
+            )
+            split_result = result.content[0].text.split("\n%separator%\n")
+            json_data = split_result[0]
+            md_text = split_result[1]
+            if json_data == "Sorry, your file could not be processed.":
+                return NotebookOutputEvent(
+                    mind_map="Unprocessable file, sorry😭",
+                    md_content="",
+                    summary="",
+                    highlights=[],
+                    questions=[],
+                    answers=[],
+                )
+            json_rep = json.loads(json_data)
+            return MindMapCreationEvent(
+                md_content=md_text,
+                **json_rep,
+            )
+
+        except json.JSONDecodeError as je:
+            print(f"JSONDecodeError in extract_file_data: {je}")
             return NotebookOutputEvent(
-                mind_map="Unprocessable file, sorry😭",
+                mind_map="Invalid JSON in response",
                 md_content="",
                 summary="",
                 highlights=[],
                 questions=[],
                 answers=[],
             )
-        json_rep = json.loads(json_data)
-        return MindMapCreationEvent(
-            md_content=md_text,
-            **json_rep,
+        except ValueError as ve:
+            print(f"ValueError in extract_file_data: {ve}")
+            return NotebookOutputEvent(
+            mind_map="Invalid response format",
+            md_content="",
+            summary="",
+            highlights=[],
+            questions=[],
+            answers=[],
         )
+
+        except Exception as e:
+            print(f"Unexpected error in extract_file_data: {e}")
+            return NotebookOutputEvent(
+                mind_map="Error processing document",
+                md_content="",
+                summary="",
+                highlights=[],
+                questions=[],
+                answers=[],
+            )
 
     @step
     async def generate_mind_map(
