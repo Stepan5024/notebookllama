@@ -137,7 +137,7 @@ load_dotenv()
 
 if os.getenv("ELEVENLABS_API_KEY", None) and os.getenv("OPENAI_API_KEY", None):
     SLLM = OpenAIResponses(
-        model="gpt-4.1", api_key=os.getenv("OPENAI_API_KEY")
+        model="gpt-4o-mini-audio-preview", api_key=os.getenv("OPENAI_API_KEY")
     ).as_structured_llm(MultiTurnConversation)
     EL_CLIENT = AsyncElevenLabs(api_key=os.getenv("ELEVENLABS_API_KEY"))
     PODCAST_GEN = PodcastGenerator(llm=SLLM, client=EL_CLIENT)

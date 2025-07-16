@@ -21,7 +21,4 @@ static/
 
 # audio files
 *.mp3
-
-# auto-generated images
-static/
-data/extracted_tables/
+.DS_Store
